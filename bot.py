@@ -1,17 +1,18 @@
 import logging
+import os
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import WebAppInfo
-import os
+from aiohttp import web
 
 API_TOKEN = os.getenv("BOT_TOKEN", "ТОКЕН_ТВОЕГО_БОТА")
-CHANNEL_ID = -1001234567890  # замени на id твоего канала
+CHANNEL_ID = -1002365418629  # замени на id твоего канала
 
 logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Храним ссылки на файлы в памяти (позже можно сделать базу)
+# Хранилище файлов (пока в памяти)
 album = []
 
 
@@ -33,32 +34,37 @@ async def handle_video(message: types.Message):
     await message.answer("Видео сохранено в альбом 🎬")
 
 
-# команда /start
+# кнопка "Открыть альбом"
 @dp.message_handler(commands=["start"])
 async def start(message: types.Message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add(types.KeyboardButton("Открыть альбом", web_app=WebAppInfo(url="https://USERNAME.github.io/my_album_bot/album")))
+    kb.add(types.KeyboardButton("Открыть альбом", web_app=WebAppInfo(url="https://izmodenovsk.github.io/my_album_bot/")))
     await message.answer("Привет! Отправляй фото или видео — я сохраню их в альбоме.", reply_markup=kb)
 
 
-# выдача JSON со списком файлов
-@dp.message_handler(commands=["album"])
-async def get_album(message: types.Message):
-    if not album:
-        await message.answer("Альбом пока пуст 📭")
-        return
-
-    # строим JSON вручную
-    json_data = "[\n"
+# ==============================
+#   API-сервер (aiohttp)
+# ==============================
+async def handle_album(request):
+    results = []
     for item in album:
-        if item["type"] == "photo":
-            file = await bot.get_file(item["file_id"])
-            file_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file.file_path}"
-            json_data += f'  {{"type": "photo", "url": "{file_url}"}},\n'
-        elif item["type"] == "video":
-            file = await bot.get_file(item["file_id"])
-            file_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file.file_path}"
-            json_data += f'  {{"type": "video", "url": "{file_url}"}},\n'
-    json_data = json_data.rstrip(",\n") + "\n]"
+        file = await bot.get_file(item["file_id"])
+        file_url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file.file_path}"
+        results.append({"type": item["type"], "url": file_url})
+    return web.json_response(results)
 
-    await message.answer(f"<pre>{json_data}</pre>", parse_mode="HTML")
+
+async def on_startup(app):
+    # запускаем aiogram
+    dp.loop.create_task(executor.start_polling(dp, skip_updates=True))
+
+
+def create_app():
+    app = web.Application()
+    app.router.add_get("/album", handle_album)
+    app.on_startup.append(on_startup)
+    return app
+
+
+if __name__ == "__main__":
+    web.run_app(create_app(), host="0.0.0.0", port=int(os.getenv("PORT", 8080)))
