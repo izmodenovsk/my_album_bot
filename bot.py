@@ -1,8 +1,9 @@
 import logging
 import os
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types
 from aiogram.types import WebAppInfo
 from aiohttp import web
+import asyncio
 
 API_TOKEN = os.getenv("BOT_TOKEN", "ТОКЕН_ТВОЕГО_БОТА")
 CHANNEL_ID = -1002365418629  # замени на id твоего канала
@@ -12,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Хранилище файлов (пока в памяти)
+# Хранилище файлов (в памяти)
 album = []
 
 
@@ -55,8 +56,9 @@ async def handle_album(request):
 
 
 async def on_startup(app):
-    # запускаем aiogram
-    dp.loop.create_task(executor.start_polling(dp, skip_updates=True))
+    # Запускаем aiogram внутри aiohttp
+    loop = asyncio.get_event_loop()
+    loop.create_task(dp.start_polling())
 
 
 def create_app():
