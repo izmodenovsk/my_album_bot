@@ -54,9 +54,13 @@ async def handle_album(request):
         results.append({"type": item["type"], "url": file_url})
     return web.json_response(results)
 
-async def handle_root(request):
-    return web.Response(text="Мой Telegram Album Bot работает! Зайдите на /album чтобы увидеть данные.")
 
+# новая корневая страница
+async def handle_root(request):
+    return web.Response(
+        text="Мой Telegram Album Bot работает! 🎉\n\nПерейдите на /album чтобы увидеть список файлов.",
+        content_type="text/plain"
+    )
 
 
 async def on_startup(app):
@@ -67,8 +71,8 @@ async def on_startup(app):
 
 def create_app():
     app = web.Application()
-    app.router.add_get("/album", handle_album)
-    app.router.add_get("/", handle_root)
+    app.router.add_get("/", handle_root)     # корень
+    app.router.add_get("/album", handle_album)  # JSON
     app.on_startup.append(on_startup)
     return app
 
