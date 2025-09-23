@@ -54,6 +54,10 @@ async def handle_album(request):
         results.append({"type": item["type"], "url": file_url})
     return web.json_response(results)
 
+async def handle_root(request):
+    return web.Response(text="Мой Telegram Album Bot работает! Зайдите на /album чтобы увидеть данные.")
+
+
 
 async def on_startup(app):
     # Запускаем aiogram внутри aiohttp
@@ -64,6 +68,7 @@ async def on_startup(app):
 def create_app():
     app = web.Application()
     app.router.add_get("/album", handle_album)
+    app.router.add_get("/", handle_root)
     app.on_startup.append(on_startup)
     return app
 
